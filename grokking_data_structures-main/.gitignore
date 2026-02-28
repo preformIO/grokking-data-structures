@@ -1,0 +1,14 @@
+**/__pycache__/
+
+# Coverage
+**/.coverage
+**/htmlcov
+
+# Profiling
+profiling/results
+
+# C#
+c#/bin
+c#/obj
+c#/*.csproj
+*.sln
