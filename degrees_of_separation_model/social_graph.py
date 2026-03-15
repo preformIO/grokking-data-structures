@@ -22,7 +22,7 @@ class RandomSocialGraph:
                 f"n_edges cannot be > n_users*(n_users-1)/2.\n"
                 f"    {n_users = }, {n_edges = }"
             )
-            
+
         if n_users and n_edges:
             # switch statement for future graph generation models (e.g. preferential attachment)
             switch = {
@@ -112,7 +112,7 @@ class RandomSocialGraph:
             for v in list(users - self.network[u] - {u}):
                 # Sort the pair (u, v) to avoid duplicates like (u, v) and (v, u)
                 possible_friendships.add(tuple(sorted((u, v))))
-                
+
         # Randomly select n_edges pairs from the possible friendships and add them to the graph
         edges_to_add = random.sample(list(possible_friendships), n_edges)
         for u, v in edges_to_add:
@@ -122,12 +122,125 @@ class RandomSocialGraph:
         self.make_minimum_spanning_tree()
         self.add_n_random_friendships(n_edges - len(self.network) + 1)
 
-    def randomize_watts_strogatz(self, n_edges):
-        
-        pass
-    
-    def randomize_barabasi_albert(self, n_edges):
-        pass
+    def _create_ring_lattice(self, k):
+        """
+        Helper function to create a regular ring lattice.
+        Each user is connected to k nearest neighbors (k/2 on each side).
+        """
+        users = list(self.network.keys())
+        n = len(users)
+
+        for i in range(n):
+            # Connect to k/2 neighbors on the right (undirected handles the left automatically)
+            for j in range(1, (k // 2) + 1):
+                neighbor_index = (i + j) % n
+
+                # Use the existing class method to add the friendship safely
+                if users[neighbor_index] not in self.network[users[i]]:
+                    self.add_friendship(users[i], users[neighbor_index])
+
+    def randomize_watts_strogatz(self, n_edges, beta=0.1):
+        """
+        Implements the Watts-Strogatz small-world graph model.
+        """
+        users = list(self.network.keys())
+        n_users = len(users)
+
+        # Derive the mean degree (k) based on the exact number of requested edges
+        # (Since total edges in a regular lattice = n * k / 2)
+        k = (2 * n_edges) // n_users
+
+        # 1. Build the foundational structured ring lattice
+        self._create_ring_lattice(k)
+
+        # Gather all current edges to consider them for rewiring
+        existing_edges = set()
+        for u in users:
+            for v in self.network[u]:
+                existing_edges.add(tuple(sorted((u, v))))
+
+        # 2. The rewiring process
+        for u, v in existing_edges:
+            if random.random() < beta:
+                # Disconnect the existing local tie
+                self.network[u].remove(v)
+                self.network[v].remove(u)
+
+                # Find a new random target that prevents self-loops and duplicate edges
+                possible_targets = [
+                    w for w in users
+                    if w != u and w not in self.network[u]
+                ]
+
+                if possible_targets:
+                    new_target = random.choice(possible_targets)
+                    self.add_friendship(u, new_target)
+
+        # Top off any missing edges due to integer division when calculating 'k'
+        current_edges = sum(len(friends)
+                            for friends in self.network.values()) // 2
+        if current_edges < n_edges:
+            self.add_n_random_friendships(n_edges - current_edges)
+
+    def randomize_barabasi_albert(self, n_edges, m0=3):
+        """
+        Implements the Barabási-Albert scale-free network model.
+        m0: The size of the initial fully-connected seed network.
+        """
+        users = list(self.network.keys())
+        n_users = len(users)
+
+        if n_users < m0:
+            raise ValueError(
+                "Total users must be greater than the seed size (m0).")
+
+        # 'm' is the number of edges each new node will form.
+        # We estimate 'm' to get as close to n_edges as possible.
+        m = n_edges // (n_users - m0) if (n_users - m0) > 0 else 1
+        if m < 1:
+            m = 1
+        if m > m0:
+            m = m0  # In standard BA models, m <= m0
+
+        # 1. Growth: Initialize the seed network of m0 nodes
+        # We will make them a fully-connected clique to start.
+        seed_users = users[:m0]
+        for i in range(m0):
+            for j in range(i + 1, m0):
+                self.add_friendship(seed_users[i], seed_users[j])
+
+        # degree_list acts as a "roulette wheel" for preferential attachment.
+        # Every time a node gains an edge, it is added to this list again.
+        degree_list = []
+        for u in seed_users:
+            degree_list.extend([u] * len(self.network[u]))
+
+        # 2. Preferential Attachment: Add the remaining nodes sequentially
+        for i in range(m0, n_users):
+            new_user = users[i]
+            targets = set()
+
+            # Pick m distinct targets preferentially
+            while len(targets) < m and len(targets) < len(self.network):
+                # Because high-degree nodes appear in degree_list more often,
+                # random.choice naturally simulates preferential attachment.
+                target = random.choice(degree_list)
+
+                # Avoid self-loops and duplicate edges
+                if target != new_user and target not in targets:
+                    targets.add(target)
+
+            # Register the friendships and update our degree tracker
+            for target in targets:
+                self.add_friendship(new_user, target)
+                degree_list.extend([new_user, target])
+
+        # Ensure we exactly hit n_edges (since m integer division is an approximation)
+        current_edges = sum(len(friends)
+                            for friends in self.network.values()) // 2
+        if current_edges < n_edges:
+            self.add_n_random_friendships(n_edges - current_edges)
+
 
 if __name__ == "__main__":
     graph = RandomSocialGraph()
@@ -167,11 +280,11 @@ if __name__ == "__main__":
     graph_2 = RandomSocialGraph(15, 14)
     print(f"{graph_2 = }")
     print(f"{graph_2.network = }")
- 
+
     graph_3 = RandomSocialGraph(15, 105)
     print(f"{graph_3 = }")
     print(f"{graph_3.network = }")
- 
+
     try:
         graph_4 = RandomSocialGraph(15, 13)
     except Exception as e:
