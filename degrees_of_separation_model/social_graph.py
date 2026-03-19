@@ -2,7 +2,7 @@ import random
 
 
 class RandomSocialGraph:
-    def __init__(self, n_users=0, n_edges=0, model=None):
+    def __init__(self, n_users=0, n_edges=0, m0=5, beta=0.5, model=None):
         # The graph: { "User": ["Friend1", "Friend2"] }
         self.network = dict()  # equivalent to {}
 
@@ -24,15 +24,12 @@ class RandomSocialGraph:
             )
 
         if n_users and n_edges:
-            # switch statement for future graph generation models (e.g. preferential attachment)
-            switch = {
-                "naive": self.randomize_minimally_connected,
-                "minimally_connected": self.randomize_minimally_connected,
-                "watts_strogatz": self.randomize_watts_strogatz,
-                "barabasi_albert": self.randomize_barabasi_albert,
-            }
-            if model in switch:
-                switch[model](n_edges)
+            if model == "naive" or model == "minimally_connected":
+                self.randomize_minimally_connected(n_edges)
+            elif model == "watts_strogatz":
+                self.randomize_watts_strogatz(n_edges, beta)
+            elif model == "barabasi_albert":
+                self.randomize_barabasi_albert(n_edges, m0)
             else:
                 self.randomize_minimally_connected(n_edges)
 
@@ -122,7 +119,7 @@ class RandomSocialGraph:
         self.make_minimum_spanning_tree()
         self.add_n_random_friendships(n_edges - len(self.network) + 1)
 
-    def _create_ring_lattice(self, k):
+    def create_ring_lattice(self, k):
         """
         Helper function to create a regular ring lattice.
         Each user is connected to k nearest neighbors (k/2 on each side).
@@ -139,7 +136,7 @@ class RandomSocialGraph:
                 if users[neighbor_index] not in self.network[users[i]]:
                     self.add_friendship(users[i], users[neighbor_index])
 
-    def randomize_watts_strogatz(self, n_edges, beta=0.1):
+    def randomize_watts_strogatz(self, n_edges, beta):
         """
         Implements the Watts-Strogatz small-world graph model.
         """
@@ -151,7 +148,7 @@ class RandomSocialGraph:
         k = (2 * n_edges) // n_users
 
         # 1. Build the foundational structured ring lattice
-        self._create_ring_lattice(k)
+        self.create_ring_lattice(k)
 
         # Gather all current edges to consider them for rewiring
         existing_edges = set()
@@ -182,7 +179,7 @@ class RandomSocialGraph:
         if current_edges < n_edges:
             self.add_n_random_friendships(n_edges - current_edges)
 
-    def randomize_barabasi_albert(self, n_edges, m0=3):
+    def randomize_barabasi_albert(self, n_edges, m0):
         """
         Implements the Barabási-Albert scale-free network model.
         m0: The size of the initial fully-connected seed network.
