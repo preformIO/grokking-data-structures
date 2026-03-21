@@ -2,7 +2,7 @@ import random
 
 
 class RandomSocialGraph:
-    def __init__(self, n_users=0, n_edges=0, m0=5, beta=0.5, model=None):
+    def __init__(self, n_users=0, n_edges=0, m0=5, beta=0.5, model='naive'):
         # The graph: { "User": ["Friend1", "Friend2"] }
         self.network = dict()  # equivalent to {}
 
@@ -31,20 +31,24 @@ class RandomSocialGraph:
             elif model == "barabasi_albert":
                 self.randomize_barabasi_albert(n_edges, m0)
             else:
-                self.randomize_minimally_connected(n_edges)
+                raise ValueError(
+                    f"Invalid model type: '{model}'. "
+                    f"Choose from 'naive', 'minimally_connected', "
+                    f"'watts_strogatz', or 'barabasi_albert'."
+                )
 
     def add_user(self, user):
         if user not in self.network:
             self.network[user] = set()
         else:
-            raise ValueError(f"User {user} already exists in the network.")
+            raise ValueError(f"User '{user}' already exists in the network.")
 
     def add_friendship(self, user1, user2):
         # For an undirected graph (mutual friendship)
         if user1 in self.network and user2 in self.network:
             if user2 in self.network[user1]:
                 raise ValueError(
-                    f"Users {user1} and {user2} are already friends.")
+                    f"Users '{user1}' and '{user2}' are already friends.")
 
             self.network[user1].add(user2)
             self.network[user2].add(user1)
@@ -52,9 +56,9 @@ class RandomSocialGraph:
         else:
             missing_users = []
             if user1 not in self.network:
-                missing_users.add(user1)
+                missing_users.append(user1)
             if user2 not in self.network:
-                missing_users.add(user2)
+                missing_users.append(user2)
 
             raise ValueError(
                 f"Cannot find user(s) in the network: {missing_users}")
@@ -88,16 +92,18 @@ class RandomSocialGraph:
             connected_users.add(v)
 
     def add_n_random_friendships(self, n_edges):
-        # Check if we can add n_edges without exceeding the maximum possible edges in the graph
+        # Check if we can add n_edges without exceeding the maximum 
+        # possible edges in the graph
         max_edges = len(self.network) * (len(self.network) - 1) // 2
-        num_edgs_in_graph = sum(len(friends)
-                                for friends in self.network.values()) // 2
-        total_edges = n_edges + num_edgs_in_graph
+        num_edges_in_graph = sum(
+                len(friends) for friends in self.network.values()
+            ) // 2
+        total_edges = n_edges + num_edges_in_graph
         if total_edges > max_edges:
             raise ValueError(
                 f"Cannot add {n_edges} edges. "
-                f"Maximum possible edges for {len(self.network)} users is {max_edges}, """
-                f"and the graph already has {num_edgs_in_graph} edges. "
+                f"Maximum possible edges for {len(self.network)} users is {max_edges}, "
+                f"and the graph already has {num_edges_in_graph} edges. "
                 f"(total_edges = n_edges + existing edges = {total_edges})."
             )
 
@@ -105,19 +111,21 @@ class RandomSocialGraph:
         possible_friendships = set()
         users = self.network.keys()
         for u in list(users):
-            # only consider pairs (u, v) where v is not already a friend of u and v != u
+            # only consider pairs (u, v) where v is not already a friend 
+            # of u and v != u
             for v in list(users - self.network[u] - {u}):
                 # Sort the pair (u, v) to avoid duplicates like (u, v) and (v, u)
                 possible_friendships.add(tuple(sorted((u, v))))
 
-        # Randomly select n_edges pairs from the possible friendships and add them to the graph
+        # Randomly select n_edges pairs from the possible friendships and 
+        # add them to the graph
         edges_to_add = random.sample(list(possible_friendships), n_edges)
         for u, v in edges_to_add:
             self.add_friendship(u, v)
 
     def randomize_minimally_connected(self, n_edges):
         self.make_minimum_spanning_tree()
-        self.add_n_random_friendships(n_edges - len(self.network) + 1)
+        self.add_n_random_friendships(n_edges - (len(self.network) - 1))
 
     def create_ring_lattice(self, k):
         """
