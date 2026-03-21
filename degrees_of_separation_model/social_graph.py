@@ -23,9 +23,10 @@ class RandomSocialGraph:
                 f"    {n_users = }, {n_edges = }"
             )
 
+        # Model reference: https://medium.com/data-science/what-are-small-world-network-models-87bbcfe0e038
         if n_users and n_edges:
-            if model == "naive" or model == "minimally_connected":
-                self.randomize_minimally_connected(n_edges)
+            if model == "naive" or model == "minimally_connected" or model == "erdos_renyi":
+                self.randomize_erdos_renyi(n_edges)
             elif model == "watts_strogatz":
                 self.randomize_watts_strogatz(n_edges, beta)
             elif model == "barabasi_albert":
@@ -33,7 +34,7 @@ class RandomSocialGraph:
             else:
                 raise ValueError(
                     f"Invalid model type: '{model}'. "
-                    f"Choose from 'naive', 'minimally_connected', "
+                    f"Choose from 'naive', 'minimally_connected', 'erdos_renyi', "
                     f"'watts_strogatz', or 'barabasi_albert'."
                 )
 
@@ -123,7 +124,7 @@ class RandomSocialGraph:
         for u, v in edges_to_add:
             self.add_friendship(u, v)
 
-    def randomize_minimally_connected(self, n_edges):
+    def randomize_erdos_renyi(self, n_edges):
         self.make_minimum_spanning_tree()
         self.add_n_random_friendships(n_edges - (len(self.network) - 1))
 
