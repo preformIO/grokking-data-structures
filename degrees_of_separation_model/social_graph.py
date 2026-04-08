@@ -2,7 +2,7 @@ import random
 
 
 class RandomSocialGraph:
-    def __init__(self, n_users=0, n_edges=0, m0=5, beta=0.5, model='naive'):
+    def __init__(self, n_users=0, n_edges=0, m0=5, w=0, beta=0.5, model='naive'):
         # The graph: { "User": ["Friend1", "Friend2"] }
         self.network = dict()  # equivalent to {}
 
@@ -30,7 +30,7 @@ class RandomSocialGraph:
             elif model == "watts_strogatz":
                 self.randomize_watts_strogatz(n_edges, beta)
             elif model == "barabasi_albert":
-                self.randomize_barabasi_albert(n_edges, m0)
+                self.randomize_barabasi_albert(n_edges, m0, w)
             else:
                 raise ValueError(
                     f"Invalid model type: '{model}'. "
@@ -188,7 +188,7 @@ class RandomSocialGraph:
         if current_edges < n_edges:
             self.add_n_random_friendships(n_edges - current_edges)
 
-    def randomize_barabasi_albert(self, n_edges, m0):
+    def randomize_barabasi_albert(self, n_edges, m0, w):
         """
         Implements the Barabási-Albert scale-free network model.
         m0: The size of the initial fully-connected seed network.
@@ -240,6 +240,12 @@ class RandomSocialGraph:
             for target in targets:
                 self.add_friendship(new_user, target)
                 degree_list.extend([new_user, target])
+                
+            # Add w new_user entries to the degree list
+            # NOTE: This is a non-standard modification to the BA model 
+            # to allow tuning the degree distribution. 
+            # (Larger w -> fewer high-degree nodes)
+            degree_list.extend([new_user] * w)
 
         # Ensure we exactly hit n_edges (since m integer division is an approximation)
         current_edges = sum(len(friends)
@@ -247,6 +253,40 @@ class RandomSocialGraph:
         if current_edges < n_edges:
             self.add_n_random_friendships(n_edges - current_edges)
 
+    # Additional methods for analysis (e.g., BFS for degrees of separation) would go here.
+    def degree_mean(self):
+        total_degrees = sum(len(friends) for friends in self.network.values())
+        return total_degrees / len(self.network) if self.network else 0
+    
+    def degree_distribution(self):
+        distribution = {}
+        for friends in self.network.values():
+            degree = len(friends)
+            distribution[degree] = distribution.get(degree, 0) + 1
+        return distribution
+    
+    def degree_stdev(self):
+        mean = self.degree_mean()
+        variance = sum(
+            (len(friends) - mean) ** 2 for friends in self.network.values()
+        ) / len(self.network) if self.network else 0
+        return variance ** 0.5
+    
+    # BFS for degrees of separation
+    def bfs(self, start_user):
+        visited = {start_user: 0}  # user: degree of separation
+        queue = [start_user]
+
+        while queue:
+            current_user = queue.pop(0)
+            current_degree = visited[current_user]
+
+            for friend in self.network[current_user]:
+                if friend not in visited:
+                    visited[friend] = current_degree + 1
+                    queue.append(friend)
+
+        return visited
 
 if __name__ == "__main__":
     graph = RandomSocialGraph()
