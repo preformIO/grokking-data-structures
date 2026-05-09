@@ -10,8 +10,8 @@ from social_graph import RandomSocialGraph
 # Monte Carlo constants
 NUM_GRAPHS = 1000
 NUM_NODES = 100
-NUM_EDGES = 150
 M0 = 5
+M = 2
 W = 10
 MODEL = "barabasi_albert"
 
@@ -44,8 +44,8 @@ def run_monte_carlo_simulation(num_graphs=NUM_GRAPHS, num_nodes=NUM_NODES):
     for graph_index in range(1, num_graphs + 1):
         graph = RandomSocialGraph(
             n_users=num_nodes,
-            n_edges=NUM_EDGES,
             m0=M0,
+            m=M,
             w=W,
             model=MODEL,
         )
@@ -70,8 +70,8 @@ def run_monte_carlo_simulation(num_graphs=NUM_GRAPHS, num_nodes=NUM_NODES):
                 "graph_id": graph_index,
                 "model": MODEL,
                 "n_nodes": num_nodes,
-                "n_edges_target": NUM_EDGES,
                 "m0": M0,
+                "m": M,
                 "w": W,
                 "average_degree_of_separation": average_degree_of_separation,
                 "mean_degree_of_connection": mean_degree_connection,
@@ -98,8 +98,8 @@ def write_results_csv(rows, correlation, output_csv_path):
         "graph_id",
         "model",
         "n_nodes",
-        "n_edges_target",
         "m0",
+        "m",
         "w",
         "average_degree_of_separation",
         "mean_degree_of_connection",
@@ -121,8 +121,8 @@ def write_results_csv(rows, correlation, output_csv_path):
 
 def main():
     script_dir = Path(__file__).resolve().parent
-    output_csv_path = script_dir / f"monte_carlo_{W}_simulation_results.csv"
-    sample_graph_html_path = script_dir / f"monte_carlo_{W}_sample_graph_vis.html"
+    output_csv_path = script_dir / f"monte_carlo_{MODEL}-{NUM_GRAPHS}-{NUM_NODES}-{M0}-{M}-{W}_simulation_results.csv"
+    sample_graph_html_path = script_dir / f"monte_carlo_{MODEL}-{NUM_GRAPHS}-{NUM_NODES}-{M0}-{M}-{W}_sample_graph_vis.html"
 
     rows, correlation, sample_graph = run_monte_carlo_simulation()
     write_results_csv(rows, correlation, output_csv_path)
@@ -132,7 +132,7 @@ def main():
 
     print(f"Simulation completed for {NUM_GRAPHS} graphs.")
     print(f"Nodes per graph: {NUM_NODES}")
-    print(f"Model: {MODEL} (m0={M0}, w={W})")
+    print(f"Model: {MODEL} (m0={M0}, m={M}, w={W})")
     print(f"Results CSV: {output_csv_path}")
     print(f"Sample graph HTML: {sample_graph_html_path}")
     print(

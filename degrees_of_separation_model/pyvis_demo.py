@@ -61,9 +61,9 @@ def main():
     print("--- Automated Graph Generation (Barabási-Albert Scale-Free Graph) ---")
     try:
         auto_graph_barabasi_albert = RandomSocialGraph(
-            n_users=n, n_edges=e, model="barabasi_albert")
+            n_users=n, m0=5, m=2, w=0, model="barabasi_albert")
         print(
-            f"Automated Graph Network dictionary: {auto_graph_barabasi_albert.network}\n")
+            f"Automated Graph Network sdictionary: {auto_graph_barabasi_albert.network}\n")
     except Exception as e:
         print(f"Automated generation error: {e}\n")
 

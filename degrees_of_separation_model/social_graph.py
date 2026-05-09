@@ -2,7 +2,7 @@ import random
 
 
 class RandomSocialGraph:
-    def __init__(self, n_users=0, n_edges=0, m0=5, w=0, beta=0.5, model='naive'):
+    def __init__(self, n_users=0, n_edges=0, m0=5, m=3, w=0, beta=0.5, model='naive'):
         # The graph: { "User": ["Friend1", "Friend2"] }
         self.network = dict()  # equivalent to {}
 
@@ -10,33 +10,48 @@ class RandomSocialGraph:
         for i in range(n_users):
             self.add_user(i)
 
-        # Add specified number of edges
-        if n_edges < (n_users-1):
+        # Check specified number of edges
+        if n_edges and n_edges < (n_users-1):
             raise ValueError(
                 f"n_edges must be > n_users - 1 in order for graph to be fully connected.\n"
                 f"    {n_users = }, {n_edges = }"
             )
         # https://brainly.com/question/37683068
-        if n_edges > (n_users) * (n_users-1) // 2:
+        if n_edges and n_edges > (n_users) * (n_users-1) // 2:
             raise ValueError(
                 f"n_edges cannot be > n_users*(n_users-1)/2.\n"
                 f"    {n_users = }, {n_edges = }"
             )
 
+        # Randomize the graph structure based on the specified model
         # Model reference: https://medium.com/data-science/what-are-small-world-network-models-87bbcfe0e038
-        if n_users and n_edges:
-            if model == "naive" or model == "minimally_connected" or model == "erdos_renyi":
-                self.randomize_erdos_renyi(n_edges)
-            elif model == "watts_strogatz":
-                self.randomize_watts_strogatz(n_edges, beta)
-            elif model == "barabasi_albert":
-                self.randomize_barabasi_albert(n_edges, m0, w)
-            else:
+        if model == "naive" or model == "minimally_connected" or model == "erdos_renyi":
+            if not n_edges:
                 raise ValueError(
-                    f"Invalid model type: '{model}'. "
-                    f"Choose from 'naive', 'minimally_connected', 'erdos_renyi', "
-                    f"'watts_strogatz', or 'barabasi_albert'."
+                    f"n_edges must be specified for model '{model}'.\n"
+                    f"    {model = }, {n_edges = }"
                 )
+            self.randomize_erdos_renyi(n_edges)
+        elif model == "watts_strogatz":
+            if not n_edges:
+                raise ValueError(
+                    f"n_edges must be specified for model '{model}'.\n"
+                    f"    {model = }, {n_edges = }"
+                )
+            self.randomize_watts_strogatz(n_edges, beta)
+        elif model == "barabasi_albert":
+            if not m0 or not m:
+                raise ValueError(
+                    f"m0 and m must be specified for model '{model}'.\n"
+                    f"    {model = }, {m0 = }, {m = }"
+                )
+            self.randomize_barabasi_albert(m0, m, w)
+        else:
+            raise ValueError(
+                f"Invalid model type: '{model}'. "
+                f"Choose from 'naive', 'minimally_connected', 'erdos_renyi', "
+                f"'watts_strogatz', or 'barabasi_albert'."
+            )
 
     # Basic graph methods
     def add_user(self, user):
@@ -192,25 +207,40 @@ class RandomSocialGraph:
             self.add_n_random_friendships(n_edges - current_edges)
 
     # Barabasi-Albert model helper functions
-    def randomize_barabasi_albert(self, n_edges, m0, w):
+    def randomize_barabasi_albert(self, m0, m, w):
         """
         Implements the Barabási-Albert scale-free network model.
         m0: The size of the initial fully-connected seed network.
+        m: The number of edges each new node will form.
+        w: The weight for tuning the degree distribution.
+        
+        NOTE: n_edges will be m0*(m0-1)/2 + m*(n_users - m0) in this model, 
+        so it is not directly controlled.
         """
         users = list(self.network.keys())
         n_users = len(users)
 
         if n_users < m0:
             raise ValueError(
-                "Total users must be greater than the seed size (m0).")
-
-        # 'm' is the number of edges each new node will form.
-        # We estimate 'm' to get as close to n_edges as possible.
-        m = n_edges // (n_users - m0) if (n_users - m0) > 0 else 1
-        if m < 1:
-            m = 1
-        if m > m0:
-            m = m0  # In standard BA models, m <= m0
+                "Total users must be greater than the seed size (m0)."
+                f"    {n_users = }, {m0 = }"
+            )
+        if m0 < 1:
+            raise ValueError(
+                "Seed size (m0) must be at least 1."
+                f"    {m0 = }"
+            )
+        # In standard BA models, m <= m0
+        if m < 1 or m > m0: 
+            raise ValueError(
+                "Number of edges per new node (m) must be at least 1 and at most m0."
+                f"    {m = }, {m0 = }"
+            )
+        if w < 0:
+            raise ValueError(
+                "Weight (w) must be non-negative."
+                f"    {w = }"
+            )
 
         # 1. Growth: Initialize the seed network of m0 nodes
         # We will make them a fully-connected clique to start.
@@ -224,13 +254,18 @@ class RandomSocialGraph:
         degree_list = []
         for u in seed_users:
             degree_list.extend([u] * len(self.network[u]))
+            # Add w new_user entries to the degree list
+            # NOTE: This is a non-standard modification to the BA model 
+            # to allow tuning the degree distribution. 
+            # (Larger w -> fewer high-degree nodes)
+            degree_list.extend([u] * w)
 
         # 2. Preferential Attachment: Add the remaining nodes sequentially
         for i in range(m0, n_users):
             new_user = users[i]
             targets = set()
 
-            # Pick m distinct targets preferentially
+            # Pick m distinct targets preferentially based on degree
             while len(targets) < m and len(targets) < len(self.network):
                 # Because high-degree nodes appear in degree_list more often,
                 # random.choice naturally simulates preferential attachment.
@@ -250,12 +285,6 @@ class RandomSocialGraph:
             # to allow tuning the degree distribution. 
             # (Larger w -> fewer high-degree nodes)
             degree_list.extend([new_user] * w)
-
-        # Ensure we exactly hit n_edges (since m integer division is an approximation)
-        current_edges = sum(len(friends)
-                            for friends in self.network.values()) // 2
-        if current_edges < n_edges:
-            self.add_n_random_friendships(n_edges - current_edges)
 
     # Additional methods for data analysis
     def degree_mean(self):
