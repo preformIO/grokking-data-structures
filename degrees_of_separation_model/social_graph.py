@@ -38,6 +38,7 @@ class RandomSocialGraph:
                     f"'watts_strogatz', or 'barabasi_albert'."
                 )
 
+    # Basic graph methods
     def add_user(self, user):
         if user not in self.network:
             self.network[user] = set()
@@ -64,6 +65,7 @@ class RandomSocialGraph:
             raise ValueError(
                 f"Cannot find user(s) in the network: {missing_users}")
 
+    # Erdos Renyi model helper functions
     def make_minimum_spanning_tree(self):
         # If the graph has edges already, raise an error
         if any(len(friends) > 0 for friends in self.network.values()):
@@ -128,6 +130,7 @@ class RandomSocialGraph:
         self.make_minimum_spanning_tree()
         self.add_n_random_friendships(n_edges - (len(self.network) - 1))
 
+    # Watts Strogatz model helper functions
     def create_ring_lattice(self, k):
         """
         Helper function to create a regular ring lattice.
@@ -188,6 +191,7 @@ class RandomSocialGraph:
         if current_edges < n_edges:
             self.add_n_random_friendships(n_edges - current_edges)
 
+    # Barabasi-Albert model helper functions
     def randomize_barabasi_albert(self, n_edges, m0, w):
         """
         Implements the Barabási-Albert scale-free network model.
@@ -253,7 +257,7 @@ class RandomSocialGraph:
         if current_edges < n_edges:
             self.add_n_random_friendships(n_edges - current_edges)
 
-    # Additional methods for analysis (e.g., BFS for degrees of separation) would go here.
+    # Additional methods for data analysis
     def degree_mean(self):
         total_degrees = sum(len(friends) for friends in self.network.values())
         return total_degrees / len(self.network) if self.network else 0
@@ -272,8 +276,8 @@ class RandomSocialGraph:
         ) / len(self.network) if self.network else 0
         return variance ** 0.5
     
-    # BFS for degrees of separation
-    def bfs(self, start_user):
+    # Breadth-First Search (BFS) for degrees of separation
+    def get_node_degrees_of_separation(self, start_user):
         visited = {start_user: 0}  # user: degree of separation
         queue = [start_user]
 
@@ -287,6 +291,27 @@ class RandomSocialGraph:
                     queue.append(friend)
 
         return visited
+    
+    # Graph statistics
+    def get_graph_stats(self) -> dict[str, int]:
+        """Returns a dictionary mapping various graph metrics to their values.
+        Metrics include: average degree of separation, standard deviation of degrees of connection.
+        """
+        
+        # Average degree of separation is calculated by performing 
+        # a BFS from each user and averaging the degrees of separation to all other users.
+        all_degrees = []
+        for user in self.network:
+            bfs_result = self.get_node_degrees_of_separation(user)
+            all_degrees.extend(bfs_result.values())
+
+        average_degree = sum(all_degrees) / len(all_degrees) if all_degrees else 0
+
+        return {
+            "average_degree_of_separation": average_degree,
+            "standard_deviation_of_degrees_of_connection": self.degree_stdev(),
+        }
+        
 
 if __name__ == "__main__":
     graph = RandomSocialGraph()

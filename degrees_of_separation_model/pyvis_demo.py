@@ -12,6 +12,13 @@ def random_social_graph_to_pyvis_network(graph):
     return net
 
 
+def save_graph_visualization(graph, output_file):
+    net = random_social_graph_to_pyvis_network(graph)
+    net.show(output_file)
+    print(
+        f"Interactive graph saved to {output_file}. Open this in your browser to explore!")
+
+
 def main():
     # This demo script showcases both automated and manual graph generation 
     # using the RandomSocialGraph class.
@@ -86,32 +93,18 @@ def main():
     print("--- Generating PyVis Interactive Visualization ---")
 
     # Save and render the interactive HTML file for the manual graph
-    output_file = "manual_graph_vis.html"
-    net = random_social_graph_to_pyvis_network(manual_graph)
-    net.show(output_file)
-    print(
-        f"Interactive graph saved to {output_file}. Open this in your browser to explore!")
+    save_graph_visualization(manual_graph, "manual_graph_vis.html")
 
     # Save and render the interactive HTML file for the automated graph (naive approach)
-    output_file = "automated_graph_naive_vis.html"
-    net = random_social_graph_to_pyvis_network(auto_graph_naive)
-    net.show(output_file)
-    print(
-        f"Interactive graph saved to {output_file}. Open this in your browser to explore!")
+    save_graph_visualization(auto_graph_naive, "automated_graph_naive_vis.html")
 
     # Save and render the interactive HTML file for the automated graph (Watts-Strogatz)
-    output_file = "automated_graph_watts_strogatz_vis.html"
-    net = random_social_graph_to_pyvis_network(auto_graph_watts_strogatz)
-    net.show(output_file)
-    print(
-        f"Interactive graph saved to {output_file}. Open this in your browser to explore!")
+    save_graph_visualization(
+        auto_graph_watts_strogatz, "automated_graph_watts_strogatz_vis.html")
 
     # Save and render the interactive HTML file for the automated graph (Barabási-Albert)
-    output_file = "automated_graph_barabasi_albert_vis.html"
-    net = random_social_graph_to_pyvis_network(auto_graph_barabasi_albert)
-    net.show(output_file)
-    print(
-        f"Interactive graph saved to {output_file}. Open this in your browser to explore!")
+    save_graph_visualization(
+        auto_graph_barabasi_albert, "automated_graph_barabasi_albert_vis.html")
 
 
 if __name__ == "__main__":
